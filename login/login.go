@@ -21,7 +21,7 @@ type User struct {
 	HashedPass string `json:"-"  db:"HashedPass"`
 }
 
-// SetUpLoginRoutes /login と /signup ルートを置きます
+// SetUpLoginRoutes /login, /signup ルートを置きます
 func SetUpLoginRoutes(e *echo.Echo, db *sqlx.DB) {
 	e.POST("/login", makePostLoginHandler(db))
 	e.POST("/signup", makePostSignUpHandler(db))
@@ -111,4 +111,10 @@ func CheckLogin(next echo.HandlerFunc) echo.HandlerFunc {
 		// 次のhandlerを呼び出す
 		return next(c)
 	}
+}
+
+func WhoAmI(c echo.Context) error {
+	return c.JSON(http.StatusOK, User{
+		Username: c.Get("userName").(string),
+	})
 }

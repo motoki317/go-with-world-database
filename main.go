@@ -30,6 +30,7 @@ func main() {
 	withLogin := e.Group("")
 	withLogin.Use(login.CheckLogin)
 	withLogin.GET("/cities/:cityName", database.MakeRetrieveCityHandler(db))
+	withLogin.GET("/whoami", login.WhoAmI)
 
 	e.Start(":10901")
 }
