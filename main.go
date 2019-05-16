@@ -29,7 +29,9 @@ func main() {
 
 	withLogin := e.Group("")
 	withLogin.Use(login.CheckLogin)
-	withLogin.GET("/cities/:cityName", database.MakeRetrieveCityHandler(db))
+	withLogin.GET("/city/:cityName", database.MakeRetrieveCityHandler(db))
+	withLogin.GET("/countries", database.MakeRetrieveCountriesHandler(db))
+	withLogin.GET("/country/:countryName", database.MakeRetrieveCountryHandler(db))
 	withLogin.GET("/whoami", login.WhoAmI)
 
 	e.Start(":10901")

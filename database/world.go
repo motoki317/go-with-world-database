@@ -16,8 +16,35 @@ type City struct {
 }
 
 type Country struct {
-	Name       string `json:"name,omitempty" db:"Name"`
-	Population int    `json:"population,omitempty" db:"Population"`
+	Code           string   `json:"code,omitempty"  db:"Code"`
+	Name           string   `json:"name,omitempty"  db:"Name"`
+	Continent      string   `json:"continent,omitempty"  db:"Continent"`
+	Region         string   `json:"region,omitempty"  db:"Region"`
+	SurfaceArea    float64  `json:"surface_area,omitempty"  db:"SurfaceArea"`
+	IndepYear      *int     `json:"indep_year,omitempty"  db:"IndepYear"`
+	Population     int      `json:"population,omitempty"  db:"Population"`
+	LifeExpectancy *float64 `json:"life_expectancy,omitempty"  db:"LifeExpectancy"`
+	GNP            *float64 `json:"GNP,omitempty"  db:"GNP"`
+	GNPOld         *float64 `json:"GNP_old,omitempty"  db:"GNPOld"`
+	LocalName      string   `json:"local_name,omitempty"  db:"LocalName"`
+	GovernmentForm string   `json:"government_form,omitempty"  db:"GovernmentForm"`
+	HeadOfState    *string  `json:"head_of_state,omitempty"  db:"HeadOfState"`
+	Capital        *int     `json:"capital,omitempty"  db:"Capital"`
+	Code2          string   `json:"code2,omitempty"  db:"Code2"`
+}
+
+type payloadUser struct {
+	Username string `json:"username,omitempty"`
+}
+
+type payloadCountry struct {
+	payloadUser
+	Country Country `json:"country,omitempty"`
+}
+
+type payloadCountries struct {
+	payloadUser
+	Countries []Country `json:"countries,omitempty"`
 }
 
 type payloadCity struct {
@@ -25,13 +52,42 @@ type payloadCity struct {
 	City City `json:"city,omitempty"`
 }
 
-type payloadUser struct {
-	Username string `json:"username,omitempty"`
+func createPayloadUser(c echo.Context) payloadUser {
+	return payloadUser{
+		Username: c.Get("userName").(string),
+	}
 }
 
-func createPayloadUser(username string) payloadUser {
-	return payloadUser{
-		Username: username,
+// MakeRetrieveCountriesHandler Worldデータベースから全ての国データを取得します
+func MakeRetrieveCountriesHandler(db *sqlx.DB) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		countries := []Country{}
+		db.Select(&countries, "SELECT * FROM country")
+
+		if len(countries) == 0 {
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		return c.JSON(http.StatusOK, payloadCountries{
+			payloadUser: createPayloadUser(c),
+			Countries: countries,
+		})
+	}
+}
+
+// MakeRetrieveCountryHandler Worldデータベースから国情報を取得します
+func MakeRetrieveCountryHandler(db *sqlx.DB) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		countryName := c.Param("countryName")
+		
+		country := Country{}
+		db.Get(&country, "SELECT * FROM country WHERE Name=?", countryName)
+		if (country.Name == "") {
+			return c.NoContent(http.StatusNotFound)
+		}
+		return c.JSON(http.StatusOK, payloadCountry{
+			payloadUser: createPayloadUser(c),
+			Country: country,
+		})
 	}
 }
 
@@ -47,7 +103,7 @@ func MakeRetrieveCityHandler(db *sqlx.DB) func(c echo.Context) error {
 		}
 
 		return c.JSON(http.StatusOK, payloadCity{
-			payloadUser: createPayloadUser(c.Get("userName").(string)),
+			payloadUser: createPayloadUser(c),
 			City:        city,
 		})
 	}
