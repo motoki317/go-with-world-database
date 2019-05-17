@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
@@ -52,18 +53,26 @@ type payloadCity struct {
 	City City `json:"city,omitempty"`
 }
 
+type payloadCities struct {
+	payloadUser
+	Cities []City `json:"cities,omitempty"`
+}
+
 func createPayloadUser(c echo.Context) payloadUser {
 	return payloadUser{
 		Username: c.Get("userName").(string),
 	}
 }
 
-// MakeRetrieveCountriesHandler Worldデータベースから全ての国データを取得します
-func MakeRetrieveCountriesHandler(db *sqlx.DB) func(c echo.Context) error {
+// MakeGetCountriesHandler Worldデータベースから全ての国データを取得します
+func MakeGetCountriesHandler(db *sqlx.DB) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		countries := []Country{}
-		db.Select(&countries, "SELECT * FROM country")
+		err := db.Select(&countries, "SELECT * FROM country")
 
+		if err != nil {
+			return c.NoContent(http.StatusInternalServerError)
+		}
 		if len(countries) == 0 {
 			return c.NoContent(http.StatusInternalServerError)
 		}
@@ -74,13 +83,17 @@ func MakeRetrieveCountriesHandler(db *sqlx.DB) func(c echo.Context) error {
 	}
 }
 
-// MakeRetrieveCountryHandler Worldデータベースから国情報を取得します
-func MakeRetrieveCountryHandler(db *sqlx.DB) func(c echo.Context) error {
+// MakeGetCountryHandler Worldデータベースから国情報を取得します
+func MakeGetCountryHandler(db *sqlx.DB) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		countryName := c.Param("countryName")
 		
 		country := Country{}
-		db.Get(&country, "SELECT * FROM country WHERE Name=?", countryName)
+		err := db.Get(&country, "SELECT * FROM country WHERE Name=?", countryName)
+
+		if err != nil {
+			return c.NoContent(http.StatusInternalServerError)
+		}
 		if (country.Name == "") {
 			return c.NoContent(http.StatusNotFound)
 		}
@@ -91,13 +104,17 @@ func MakeRetrieveCountryHandler(db *sqlx.DB) func(c echo.Context) error {
 	}
 }
 
-// MakeRetrieveCityHandler Worldデータベースから都市情報を取得します
-func MakeRetrieveCityHandler(db *sqlx.DB) func(c echo.Context) error {
+// MakeGetCityHandler Worldデータベースから都市情報を取得します
+func MakeGetCityHandler(db *sqlx.DB) func(c echo.Context) error {
 	return func(c echo.Context) error {
 		cityName := c.Param("cityName")
 
 		city := City{}
-		db.Get(&city, "SELECT * FROM city WHERE Name=?", cityName)
+		err := db.Get(&city, "SELECT * FROM city WHERE Name=?", cityName)
+
+		if err != nil {
+			return c.NoContent(http.StatusInternalServerError)
+		}
 		if city.Name == "" {
 			return c.NoContent(http.StatusNotFound)
 		}
@@ -105,6 +122,29 @@ func MakeRetrieveCityHandler(db *sqlx.DB) func(c echo.Context) error {
 		return c.JSON(http.StatusOK, payloadCity{
 			payloadUser: createPayloadUser(c),
 			City:        city,
+		})
+	}
+}
+
+// MakeGetCitiesInCountryHandler CountryNameからその国のCity一覧を取得します
+func MakeGetCitiesInCountryHandler(db *sqlx.DB) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		countryName := c.Param("countryName")
+
+		cities := []City{}
+		err := db.Select(&cities, "SELECT city.ID, city.Name, city.District, city.Population FROM city JOIN country ON country.Code = city.CountryCode WHERE country.Name=?", countryName)
+		
+		if err != nil {
+			fmt.Println(err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+		if len(cities) == 0 {
+			return c.NoContent(http.StatusNotFound)
+		}
+
+		return c.JSON(http.StatusOK, payloadCities{
+			payloadUser: createPayloadUser(c),
+			Cities: cities,
 		})
 	}
 }
