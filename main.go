@@ -18,6 +18,8 @@ func main() {
 	store := database.SetUpSessionDatabase(db)
 
 	e := echo.New()
+
+	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
 	e.Use(session.Middleware(store))
 
@@ -35,5 +37,6 @@ func main() {
 	withLogin.GET("/citiesInCountry/:countryName", database.MakeGetCitiesInCountryHandler(db))
 	withLogin.GET("/whoami", login.WhoAmI)
 
-	e.Start(":10901")
+	// e.Logger.Fatal(e.StartAutoTLS(":10901"))
+	e.Logger.Fatal(e.Start(":10901"))
 }
